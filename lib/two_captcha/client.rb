@@ -14,9 +14,13 @@ module TwoCaptcha
     # @option options [Integer] :timeout (60) Seconds before giving up of a
     #                                         captcha being solved.
     # @option options [Integer] :polling  (5) Seconds before check_answer again
-    #
+    # =>
     # @return [TwoCaptcha::Client] A Client instance.
     #
+
+    # @param [String]
+    # @return [TwoCaptcha::Client]
+
     def initialize(key, options = {})
       self.key    = key
       self.timeout  = options[:timeout] || 60
@@ -61,12 +65,27 @@ module TwoCaptcha
     #                               not raised.
     #
     def decode!(options = {})
+      decoded_captcha = poll_captcha(options.merge(raw64: 'raw64'))
+
+      decoded_captcha
+    end
+
+    def decode_recaptcha_v2!(options = {})
+      decoded_captcha = poll_captcha(options.merge(method: 'userrecaptcha'))
+
+      decoded_captcha.recaptcha_code = decoded_captcha.text
+      decoded_captcha
+    end
+
+    def poll_captcha(options = {})
       started_at = Time.now
 
-      raw64 = load_captcha(options)
-      fail(TwoCaptcha::InvalidCaptcha) if raw64.to_s.empty?
+      if !(options[:raw64].nil?)
+        raw64 = load_captcha(options)
+        fail(TwoCaptcha::InvalidCaptcha) if raw64.to_s.empty?
+      end
 
-      decoded_captcha = upload(options.merge(raw64: raw64))
+      decoded_captcha = upload(options)
 
       # pool untill the answer is ready
       while decoded_captcha.text.to_s.empty?
@@ -74,7 +93,6 @@ module TwoCaptcha
         decoded_captcha = captcha(decoded_captcha.id)
         fail TwoCaptcha::Timeout if (Time.now - started_at) > timeout
       end
-
       decoded_captcha
     end
 
@@ -109,7 +127,6 @@ module TwoCaptcha
     #
     def captcha(captcha_id)
       response = request('res', :get, action: 'get', id: captcha_id)
-
       decoded_captcha = TwoCaptcha::Captcha.new(id: captcha_id)
       decoded_captcha.api_response = response
 

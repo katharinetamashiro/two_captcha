@@ -118,6 +118,10 @@ more information.
 The response will be an array containing coordinates where the captcha should be
 clicked. For the captcha above it should look something like:
 
+  ```ruby
+  19
+  ```
+
 ## Audio reCAPTCHA v2
 
   ```ruby
